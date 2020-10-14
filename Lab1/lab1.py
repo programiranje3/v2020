@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
     # odd_or_even()
 
-    # print(factorial(7))
+    # factorial(7)
 
     # a = [31, 72, 13, 41, 5, 16, 87, 98, 9]
     # print(nth_lowest_v2(a, 3))
@@ -101,7 +101,6 @@ if __name__ == '__main__':
     # print(nth_lowest_v2('today', 6))
 
     # print(list_stats([1.2, 3.4, 5.6, -4.2, -5.6, 9, 11.3, -23.45, 81]))
-    # print(list_stats_v2([1.2, 3.4, 5.6, -4.2, -5.6, 9, 11.3, -23.45, 81]))
 
     # print_new_list([1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89], 9)
 
