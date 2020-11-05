@@ -11,6 +11,19 @@
 #   https://realpython.com/python-reduce-function/ or this one:
 #   https://www.python-course.eu/python3_lambda.php
 
+def compute_product(*numbers, absolute=False):
+    if absolute:
+        numbers = [abs(number) for number in numbers]
+
+    # Option 1
+    # product = 1
+    # for number in numbers:
+    #     product *= number
+    # return product
+
+    # Option 2
+    from functools import reduce
+    return reduce(lambda a,b: a*b, numbers)
 
 
 
@@ -25,7 +38,21 @@
 # 2) using list comprehension
 # 3) using the filter() f. together with an appropriate lambda f.
 
+def select_strings(*strings, threshold=3):
+    # Option 1
+    # selection = list()
+    # for s in [s.lower() for s in strings]:
+    #     if (s[0] == s[-1]) and (len(set(s)) > threshold):
+    #         selection.append(s)
+    #
+    # return selection
 
+    # Option 2
+    # return [s for s in strings if (s.lower()[0] == s.lower()[-1]) and (len(set(s.lower())) > threshold)]
+
+    # Option 3
+    check_string = lambda s: (s.lower()[0] == s.lower()[-1]) and (len(set(s.lower())) > threshold)
+    return list(filter(check_string, strings))
 
 
 # Task 3
@@ -35,7 +62,7 @@
 # an order is the product of the quantity and the price per item (in USD).
 # The function also receives two named arguments that may affect the computed total price:
 # - discount - the discount, expressed in percentages, to be applied to the total price;
-#   the default value of this argument is 0 (UPDATE)
+#   the default value of this argument is 0
 # - shipping - the shipping cost to be added to orders with total price less than 100 USD.
 #   default value of this argument is 10 (USD).
 #
@@ -44,6 +71,32 @@
 # 2) using list comprehension
 # 3) using the map() f. together with an appropriate lambda f.
 
+def process_product_orders(orders, shipping=10, discount=0):
+    # Option 1
+    # processed_orders = list()
+    # for order in orders:
+    #     id, pname, quantity, pprice = order
+    #     tot_price = quantity * pprice * (1-discount/100)
+    #     processed_orders.append((id, tot_price if tot_price >= 100 else tot_price+shipping))
+    # return processed_orders
+
+    # Option 2
+    # processed_orders = [(id, quantity*pprice*(1-discount/100)) for id, pname, quantity, pprice in orders]
+    #
+    # return [(pid, tot_price) if tot_price > 100 else (pid, tot_price + shipping)
+    #         for pid, tot_price in processed_orders]
+
+    # Option 3
+    # processed_orders = map(lambda order: (order[0], order[2]*order[3]*(1-discount/100)), orders)
+    # return list(map(lambda porder: porder if porder[1] > 100 else (porder[0], porder[1] + shipping), processed_orders))
+
+    # Option 4
+    def process_order(order):
+        id, pname, quantity, pprice = order
+        tot_price = quantity * pprice * (1 - discount / 100)
+        return (id, tot_price) if tot_price > 100 else (id, tot_price + shipping)
+
+    return list(map(process_order, orders))
 
 
 
@@ -65,6 +118,22 @@
 # Hint 2: to measure the time of function execution, use the perf_counter() f.
 # from the time module (it returns a float value representing time in seconds).
 
+import functools
+def timer(func):
+    from time import perf_counter
+
+    @functools.wraps(func)
+    def wrapper_timer(*args, **kwargs):
+
+        start_time = perf_counter()
+
+        value = func(*args, **kwargs)
+
+        duration = perf_counter() - start_time
+        print(f"The executation time of function {func.__name__} was {duration:.4f} seconds")
+
+        return value
+    return wrapper_timer
 
 
 
@@ -76,6 +145,20 @@
 # Write the function in a few different ways - e.g. (1) using a loop; (2) using list comprehension;
 # (3) using the map f. - and decorate each one with the timer to compare their performance
 
+@timer
+def compute_sum_loop(n):
+    tot_sum = 0
+    for x in range(1, n+1):
+        tot_sum += sum(range(1, x+1))
+    return tot_sum
+
+@timer
+def compute_sum_lc(n):
+    return sum([sum(range(1, x+1)) for x in range(1, n+1)])
+
+@timer
+def compute_sum_map(n):
+    return sum(map(lambda x: sum(range(1, x+1)), range(1, n+1)))
 
 
 
@@ -88,6 +171,17 @@
 #
 # Bonus: assure that each function invocation produces the same results
 
+@timer
+def mean_median_diff(k, n):
+    from random import randint, seed
+    from statistics import mean, median
+
+    numbers = []
+    print("Printing mean - median difference")
+    seed(1)
+    for i in range(n):
+        numbers.append(randint(1, k))
+        print(f"After adding {i+1} element: {abs(mean(numbers) - median(numbers)):.4f}")
 
 
 
@@ -100,7 +194,23 @@
 # Bonus: before calling the wrapped function, print, to the console,
 # its name with the list of input parameters (after standardisation)
 
+def standardiser(func):
+    @functools.wraps(func)
+    def wrapper_standardiser(*args, **kwargs):
 
+        from statistics import mean, stdev
+        m = mean(args)
+        sd = stdev(args)
+        args = [(a-m)/sd for a in args]
+
+        print(f"Calling function {func.__name__} with")
+        print("- positional arguments: " + ", ".join([str(round(a, 4)) for a in args]))
+        print("- keyword arguments: " + ", ".join([key + "=" + str(val) for key, val in kwargs.items()]))
+
+        value = func(*args, **kwargs)
+
+        return round(value, 4)
+    return wrapper_standardiser
 
 
 # Task 5.1
@@ -111,7 +221,9 @@
 # The function returns the sum of S(x) of all received int values.
 # Decorate the function with the standardise decorator.
 
-
+@standardiser
+def sum_of_sums(*numbers, n=10):
+    return sum(map(lambda x: sum([x**y for y in range(n+1)]), numbers))
 
 
 if __name__ == '__main__':
@@ -131,7 +243,6 @@ if __name__ == '__main__':
     # print("Calling the function by passing an 'unpacked' list as input argument")
     # print(compute_product(*num_list)) # the * operator is 'unpacking' the list
 
-
     # str_list = ['yellowy', 'Bob', 'lovely', 'yesterday', 'too']
     # print(select_strings(*str_list))
 
@@ -145,14 +256,12 @@ if __name__ == '__main__':
     # print("The same orders with discount of 10%")
     # print(process_product_orders(orders, discount=10))
 
-    # print(compute_sum_loop(10000))
+    # print(compute_sum(10000))
     # print()
-    # print(compute_sum_lc(10000))
+    # print(compute_sum_v2(10000))
     # print()
-    # print(compute_sum_map(10000))
+    # print(compute_sum_v3(10000))
 
-    # mean_median_diff(50, 250)
+    # mean_median_diff(100, 250)
 
     # print(sum_of_sums(1,3,5,7,9,11,13, n=7))
-
-
