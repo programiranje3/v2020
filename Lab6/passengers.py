@@ -4,7 +4,16 @@
 # (free) onboard wifi, and an item for cases when services are not specified.
 #
 
+from enum import Enum
 
+class FlightService(Enum):
+
+    unspecified = 0
+    snack = 1
+    refreshments = 2
+    meal = 3
+    priority_boarding = 4
+    onboard_wifi = 5
 
 
 #
@@ -41,13 +50,18 @@
 #   available to the passengers; this list is created based on the *services* class attribute.
 #
 
+from sys import stderr
 
 class Passenger:
 
-    def __init__(self, name, passport, business=False):
+    services = [FlightService.unspecified]
+
+    def __init__(self, name, passport, air_miles=None, checked_in=False):
         self.name = name
         self.passport = passport
-        self.is_business = business
+        self.air_miles = air_miles
+        self.checked_in = checked_in
+
 
     @property
     def passport(self):
@@ -64,9 +78,31 @@ class Passenger:
             self.__passport = None
 
 
+    @property
+    def air_miles(self):
+        return self.__air_miles
+
+    @air_miles.setter
+    def air_miles(self, value):
+        self.__air_miles = None
+
+        if (value is None) or (isinstance(value, int) and (value >= 0)):
+            self.__air_miles = value
+        elif isinstance(value, str):
+            try:
+                if int(value) >= 0:
+                    self.__air_miles = int(value)
+            except ValueError:
+                stderr.write(f"Error! An incorrect value {value} passed for the air miles attribute\n")
+        else:
+            print(f"Error! The input value {value} cannot be used for setting the air miles attribute")
+
+
     def __str__(self):
-        passenger_str = f"passenger {self.name}, passport number: " + (self.passport if self.passport else "unknown")
-        return "Business class " + passenger_str if self.is_business else ("Economy class " + passenger_str)
+        passenger_str = f"{self.name}, with passport number: " + (self.passport if self.passport else "unavailable")
+        passenger_str += f", collected {self.air_miles} air miles" if self.air_miles else ""
+        passenger_str += "; check-in completed" if self.checked_in else "; not checked in yet"
+        return passenger_str
 
 
     def __eq__(self, other):
@@ -79,6 +115,11 @@ class Passenger:
         else:
             print("The other object is not of the Passenger type")
             return False
+
+
+    @classmethod
+    def available_services(cls):
+        return [s.name.replace('_', ' ') for s in cls.services]
 
 
 #
@@ -96,8 +137,15 @@ class Passenger:
 #   the available information about the passenger
 #
 
+class EconomyPassenger(Passenger):
 
+    services = [FlightService.snack, FlightService.refreshments]
 
+    def candidate_for_upgrade(self, min_air_miles):
+        return self.checked_in and self.air_miles and (self.air_miles > min_air_miles)
+
+    def __str__(self):
+        return "Economy class passenger " + super().__str__()
 
 
 #
@@ -110,29 +158,32 @@ class Passenger:
 #   the available information about the passengers
 #
 
+class BusinessPassenger(Passenger):
 
+    services = [FlightService.meal, FlightService.onboard_wifi, FlightService.priority_boarding]
+
+    def __str__(self):
+        return "Business class passenger " + super().__str__()
 
 
 
 if __name__ == '__main__':
 
-    pass
+    jim = EconomyPassenger("Jim Jonas", '123456', air_miles=1000)
+    # jim.services = [FlightService.onboard_wifi, FlightService.meal]
+    print(jim)
+    print(jim.__dict__)
+    print(jim.available_services())
+    print()
 
-    # jim = EconomyPassenger("Jim Jonas", '123456', air_miles=1000)
-    # # jim.services = [FlightService.onboard_wifi, FlightService.meal]
-    # print(jim)
-    # print(jim.__dict__)
-    # print(jim.available_services())
-    # print()
-    #
-    # bob = EconomyPassenger("Bob Jones", '987654', checked_in=True)
-    # print(bob)
-    # bob.air_miles = '20200'
-    # print(bob.__dict__)
-    # print(bob.available_services())
-    # print()
-    #
-    # mike = BusinessPassenger("Mike Stone", '234567', air_miles=2000)
-    # print(mike)
-    # print(mike.__dict__)
-    # print(mike.available_services())
+    bob = EconomyPassenger("Bob Jones", '987654', checked_in=True)
+    print(bob)
+    bob.air_miles = '20200'
+    print(bob.__dict__)
+    print(bob.available_services())
+    print()
+
+    mike = BusinessPassenger("Mike Stone", '234567', air_miles=2000)
+    print(mike)
+    print(mike.__dict__)
+    print(mike.available_services())

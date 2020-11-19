@@ -45,15 +45,19 @@
 #   air miles are first offered the upgrade option.
 
 from datetime import datetime
-from Lab6.passengers import Passenger
+from sys import stderr
+from Lab6.passengers import Passenger, EconomyPassenger, BusinessPassenger
 
 class Flight:
 
     departure_format = "%Y-%m-%d %H:%M"
 
-    def __init__(self, fl_num, departure):
+    def __init__(self, fl_num, departure, route=None, operator=None):
         self.flight_num = fl_num
         self.departure = departure
+        self.route = route
+        self.operator = operator
+
         self.passengers = list()
 
 
@@ -63,13 +67,39 @@ class Flight:
 
     @departure.setter
     def departure(self, value):
+        self.__departure = None
+
         if isinstance(value, datetime) and (value > datetime.today()):
             self.__departure = value
-        elif isinstance(value, str) and (datetime.strptime(value, self.departure_format) > datetime.today()):
-            self.__departure = datetime.strptime(value, self.departure_format)
+        elif isinstance(value, str):
+            try:
+                value_dt = datetime.strptime(value, self.departure_format)
+                if value_dt > datetime.today():
+                    self.__departure = value_dt
+                else:
+                    print("Error! The departure has to be a date and time in the future")
+            except ValueError as err:
+                stderr.write(f"Error while processing departure input: {err}\n")
         else:
             print(f"Error in setting the departure date and time")
-            self.__departure = None
+
+
+    @property
+    def route(self):
+        return self.__route
+
+    @route.setter
+    def route(self, value):
+        import re
+
+        if isinstance(value, (list, tuple)) and (len(value) == 2):
+            self.__route = tuple(value)
+        elif isinstance(value, str) and (len(re.split('[,->]', value)) == 2):
+            origin, destination = re.split('[,->]', value)
+            self.__route = origin.rstrip(), destination.lstrip()
+        else:
+            print("Error! Route value cannot be interpreted")
+            self.__route = None
 
 
     def add_passenger(self, p):
@@ -85,6 +115,14 @@ class Flight:
         flight_str = f"Flight number {self.flight_num} scheduled to departure at: "
 
         flight_str += datetime.strftime(self.departure, self.departure_format) if self.departure else "still unknown"
+
+        if self.route:
+            origin, dest = self.route
+            flight_str += f"\nFlying from {origin if origin else '[unknown]'} to {dest if dest else '[unknown]'}"
+        else:
+            flight_str += "Flying route not set"
+
+        flight_str += f"\nFlight operated by {self.operator if self.operator else '[unknown]'}"
 
         if len(self.passengers) == 0:
             flight_str += "\nStill no passengers checked for the flight."
@@ -116,42 +154,68 @@ class Flight:
             return current_passenger
 
 
+    @classmethod
+    def from_Belgrade_to_Frankfurt(cls, flight_num, departure_dt):
+        return cls(flight_num, departure_dt, 'Belgrade, Frankfurt')
+
+
+    @classmethod
+    def from_dict(cls, flight_dict):
+        # fl_num, origin, destination, departure, operator
+        try:
+            return cls(flight_dict['fl_num'], flight_dict['departure'],
+                       (flight_dict['origin'], flight_dict['destination']),
+                       flight_dict['operator'])
+        except KeyError as err:
+            stderr.write(f"An error occurred while reading from the flight-related dictionary:\nErroneous key:{err}\n")
+            stderr.write("Creating a Flight object with the available valid data\n")
+
+            return cls(cls.value_or_None(flight_dict, 'fl_num'),
+                       cls.value_or_None(flight_dict, 'departure'),
+                       (cls.value_or_None(flight_dict, 'origin'), cls.value_or_None(flight_dict, 'destination')),
+                       cls.value_or_None(flight_dict, 'operator'))
+
+    @staticmethod
+    def value_or_None(d, key):
+        return d[key] if key in d.keys() else None
+
+
+
 
 if __name__ == '__main__':
 
-    pass
 
-    # lh1411 = Flight('LH1411', '2020-12-10 6:50', ('Belgrade', 'Munich'))
-    # print(lh1411)
-    # print()
-    #
-    # lh992 = Flight.from_Belgrade_to_Frankfurt('LH992', '2020-11-29 12:20')
-    # lh992.operator = "Lufthansa"
-    # print(lh992)
-    # print()
-    #
-    # lh1514_dict = {'fl_num':'lh1514',
-    #                'departure': '2020-11-30 16:30',
-    #                'operator': 'Lufthansa',
-    #                'origin': 'Paris',
-    #                'destination': 'Berlin'}
-    #
-    # lh1514 = Flight.create_from_dict(lh1514_dict)
-    # print(lh1514)
-    # print()
-    #
-    # bob = BusinessPassenger("Bob Smith", "123456", air_miles=1000, checked_in=True)
-    # john = EconomyPassenger("John Smith", "987654")
-    # bill = EconomyPassenger("Billy Stone", "917253", 5000, True)
-    # dona = EconomyPassenger("Dona Stone", "917251", air_miles=2500)
-    # kate = EconomyPassenger("Kate Fox", "114252", 3500, checked_in=True)
-    #
-    # for p in [bob, john, bill, dona, kate]:
-    #     lh992.add_passenger(p)
-    #
-    # print(f"After adding passengers to flight {lh992.flight_num}:\n")
-    # print(lh992)
-    # print()
+    lh1411 = Flight('LH1411', '2020-12-10 6:50', 'Belgrade > Munich')
+    print(lh1411)
+    print()
+
+    lh992 = Flight.from_Belgrade_to_Frankfurt('LH992', '2020-11-29 12:20')
+    lh992.operator = "Lufthansa"
+    print(lh992)
+    print()
+
+    lh1514_dict = {'fl_num':'lh1514',
+                   'departure': '2020-11-30 16:30',
+                   'operator': 'Lufthansa',
+                   'from': 'Paris',
+                   'to': 'Berlin'}
+
+    lh1514 = Flight.from_dict(lh1514_dict)
+    print(lh1514)
+    print()
+
+    bob = BusinessPassenger("Bob Smith", "123456", air_miles=1000, checked_in=True)
+    john = EconomyPassenger("John Smith", "987654")
+    bill = EconomyPassenger("Billy Stone", "917253", 5000, True)
+    dona = EconomyPassenger("Dona Stone", "917251", air_miles=2500)
+    kate = EconomyPassenger("Kate Fox", "114252", 3500, checked_in=True)
+
+    for p in [bob, john, bill, dona, kate]:
+        lh992.add_passenger(p)
+
+    print(f"After adding passengers to flight {lh992.flight_num}:\n")
+    print(lh992)
+    print()
     #
     # print("Last call to passengers who have not yet checked in!")
     # for passenger in lh992.not_checked_in_passengers():
