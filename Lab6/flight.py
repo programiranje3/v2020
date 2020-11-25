@@ -180,6 +180,13 @@ class Flight:
         return d[key] if key in d.keys() else None
 
 
+    def not_checked_in(self):
+        pass
+
+
+    def candidates_for_upgrade(self, min_air_miles):
+        pass
+
 
 
 if __name__ == '__main__':
@@ -216,16 +223,26 @@ if __name__ == '__main__':
     print(f"After adding passengers to flight {lh992.flight_num}:\n")
     print(lh992)
     print()
-    #
+
     # print("Last call to passengers who have not yet checked in!")
-    # for passenger in lh992.not_checked_in_passengers():
+    # for passenger in lh992.not_checked_in():
     #     print(passenger)
+    #
+    # print()
+    # print("An alternative way to iterate through passengers who have not checked in:")
+    # g = lh992.not_checked_in()
+    # try:
+    #     while True:
+    #         print(next(g))
+    # except StopIteration:
+    #     print("--- end of check-in report ---")
+
     #
     # print()
     # print("Passengers offered an upgrade opportunity:")
     # for ind, passenger in enumerate(lh992.candidates_for_upgrade(2000)):
     #     print(f"{ind+1}. {passenger}")
-    #
+    # #
     #
     # print()
     # print("Candidates for upgrade to business class:")
