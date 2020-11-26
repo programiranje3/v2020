@@ -181,11 +181,20 @@ class Flight:
 
 
     def not_checked_in(self):
-        pass
+        not_checked_in_count = 0
+        for p in self.passengers:
+            if not p.checked_in:
+                not_checked_in_count += 1
+                yield p
+
+        print(f"{not_checked_in_count} passengers have not checked in yet")
 
 
     def candidates_for_upgrade(self, min_air_miles):
-        pass
+        candidates = (p for p in self.passengers
+                      if isinstance(p, EconomyPassenger) and p.candidate_for_upgrade(min_air_miles))
+        for c in sorted(candidates, key=lambda c: c.air_miles, reverse=True):
+            yield c
 
 
 
@@ -224,31 +233,31 @@ if __name__ == '__main__':
     print(lh992)
     print()
 
-    # print("Last call to passengers who have not yet checked in!")
-    # for passenger in lh992.not_checked_in():
-    #     print(passenger)
-    #
-    # print()
-    # print("An alternative way to iterate through passengers who have not checked in:")
-    # g = lh992.not_checked_in()
-    # try:
-    #     while True:
-    #         print(next(g))
-    # except StopIteration:
-    #     print("--- end of check-in report ---")
+    print("Last call to passengers who have not yet checked in!")
+    for passenger in lh992.not_checked_in():
+        print(passenger)
 
-    #
-    # print()
-    # print("Passengers offered an upgrade opportunity:")
-    # for ind, passenger in enumerate(lh992.candidates_for_upgrade(2000)):
-    #     print(f"{ind+1}. {passenger}")
-    # #
-    #
-    # print()
-    # print("Candidates for upgrade to business class:")
-    # g = lh992.candidates_for_upgrade(1000)
-    # try:
-    #     while True:
-    #         print(next(g))
-    # except StopIteration:
-    #     print("--- end of candidates list ---")
+    print()
+    print("An alternative way to iterate through passengers who have not checked in:")
+    g = lh992.not_checked_in()
+    try:
+        while True:
+            print(next(g))
+    except StopIteration:
+        print("--- end of check-in report ---")
+
+
+    print()
+    print("Passengers offered an upgrade opportunity:")
+    for ind, passenger in enumerate(lh992.candidates_for_upgrade(2000)):
+        print(f"{ind+1}. {passenger}")
+
+
+    print()
+    print("Candidates for upgrade to business class:")
+    g = lh992.candidates_for_upgrade(1000)
+    try:
+        while True:
+            print(next(g))
+    except StopIteration:
+        print("--- end of candidates list ---")
