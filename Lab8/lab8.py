@@ -21,6 +21,8 @@
 import json
 from pathlib import Path
 from sys import stderr
+import requests
+from bs4 import BeautifulSoup
 
 
 def get_content_from_url(url):
@@ -29,7 +31,26 @@ def get_content_from_url(url):
         if the page content cannot be retrieved
     '''
 
+    def response_OK(r):
+        contet_type = r.headers['content-type']
+        return (r.status_code == requests.codes.ok) and contet_type and ('html' in contet_type)
 
+    try:
+        with requests.get(url, headers={'User-Agent':'P3_FON'}) as response:
+            return response.text if response_OK(response) else None
+    except requests.RequestException as rerr:
+        stderr.write(f"An error occurred while tryng to retrieve page from {url}:\n{rerr}\n")
+        return None
+
+
+def get_str_from_element(element):
+    if element.string:
+        return element.string.strip()
+
+    if element.strings:
+        return " ".join(s for s in element.stripped_strings)
+
+    return ""
 
 
 def get_athletes_names(url):
@@ -38,8 +59,45 @@ def get_athletes_names(url):
         and returns a list of the athletes' names
     '''
 
+    names = list()
+
+    web_page = get_content_from_url(url)
+    if web_page is None:
+        stderr.write(f"Cannot retrieve data from {url}. Cannot proceed!\n")
+        return names
+
+    page_soup = BeautifulSoup(web_page, 'html.parser')
+    if page_soup is None:
+        stderr.write(f"Cannot parse page from {url}. Cannot proceed!\n")
+        return names
+
+    olist = page_soup.find('ol')
+    for litem in olist.find_all('li'):
+        strong = litem.find('strong')
+        strong_str = get_str_from_element(strong)
+        if strong_str != "":
+            names.append(strong_str)
+
+    return names
 
 
+def extract_country_of_origin(element):
+
+    def is_reference(s):
+        return (len(s) >= 3) and (s[0]=='[') and (s[-1] ==']')
+
+    if element.string:
+        return element.string.rsplit(',', maxsplit=1)[-1].lstrip()
+
+    if element.strings:
+        born_str = " ".join([s for s in element.stripped_strings if not is_reference(s)])
+        return born_str.rsplit(',', maxsplit=1)[-1].lstrip()
+
+    return None
+
+
+def is_disambiguation_page(page_soup):
+    return page_soup.find(name='table', id="disambigbox") is not None
 
 
 def retrieve_country_of_origin(name):
@@ -49,9 +107,37 @@ def retrieve_country_of_origin(name):
         Wikipedia page (or None if the information is not available).
     '''
 
+    url = f"https://en.wikipedia.org/wiki/{name.replace(' ', '_')}"
+    wiki_page = get_content_from_url(url)
+    if wiki_page is None:
+        stderr.write(f"Cannot retrieve Wikipedia page for {name}\n")
+        return None
 
+    wiki_soup = BeautifulSoup(wiki_page, 'html.parser')
+    if wiki_soup is None:
+        stderr.write(f"Cannot parse Wikipedia page for {name}\n")
+        return None
 
+    info_table = wiki_soup.find(name='table', class_=lambda val: ('infobox' in val) and ('vcard' in val))
+    if info_table is None:
+        if is_disambiguation_page(wiki_soup):
+            print(f"Reached disambiguation page for {name}")
+        return None
 
+    th_born = info_table.find(name='th', string=lambda val: val and (val.startswith('Born') or val=='Place of birth'))
+    if th_born:
+        td_born = th_born.find_next_sibling(name='td')
+        if td_born:
+            return extract_country_of_origin(td_born)
+
+    bold_born = info_table.find(name='b', string=lambda val: val and val.startswith('Born'))
+    if bold_born:
+        td_born = bold_born.find_parent(name='td')
+        if td_born:
+            return extract_country_of_origin(td_born)
+
+    print(f"Could not retrieve country for {name}")
+    return None
 
 
 def collect_athletes_data(athletes_url):
@@ -79,28 +165,28 @@ def collect_athletes_data(athletes_url):
     # except OSError as err:
     #     stderr.write(f"An error occurred while writing athletes' names to file:\n{err}\n")
 
-    # athletes_names = list()
-    # try:
-    #     with open(Path.cwd() / 'athletes_names.txt', 'r') as fobj:
-    #         for line in fobj.readlines():
-    #             athletes_names.append(line.rstrip('\n'))
-    # except OSError as err:
-    #     stderr.write(f"An error occurred while reading athletes' names from file:\n{err}\n")
-    #
-    #
-    # print("\nCollecting data about the athletes' country origins...")
-    # athletes_dict = dict()
-    # not_found = list()
-    # for name in athletes_names:
-    #     country = retrieve_country_of_origin(name)
-    #     if country:
-    #         athletes_dict[name] = country
-    #     else:
-    #         not_found.append(name)
-    # print('...done')
-    #
-    # for athlete, origin in athletes_dict.items():
-    #     print(f"{athlete}: {origin}")
+    athletes_names = list()
+    try:
+        with open(Path.cwd() / 'athletes_names.txt', 'r') as fobj:
+            for line in fobj.readlines():
+                athletes_names.append(line.rstrip('\n'))
+    except OSError as err:
+        stderr.write(f"An error occurred while reading athletes' names from file:\n{err}\n")
+
+
+    print("\nCollecting data about the athletes' country origins...")
+    athletes_dict = dict()
+    not_found = list()
+    for name in athletes_names:
+        country = retrieve_country_of_origin(name)
+        if country:
+            athletes_dict[name] = country
+        else:
+            not_found.append(name)
+    print('...done')
+
+    for athlete, origin in athletes_dict.items():
+        print(f"{athlete}: {origin}")
     #
     # with open(Path.cwd() / "athletes.json", "w") as jsonf:
     #     json.dump(athletes_dict, jsonf, indent=4)
@@ -142,4 +228,4 @@ if __name__ == '__main__':
 
     top_athletes_url = 'https://ivansmith.co.uk/?page_id=475'
     collect_athletes_data(top_athletes_url)
-    most_represented_countries()
+    # most_represented_countries()
