@@ -151,30 +151,32 @@ def collect_athletes_data(athletes_url):
         been collected
     '''
 
-    # print("Putting together a list of athletes' names...")
-    # athletes_names = get_athletes_names(athletes_url)
-    # print('...done')
-    # print(f'Gathered names for {len(athletes_names)} athletes.')
+    print("Putting together a list of athletes' names...")
+    athletes_names = get_athletes_names(athletes_url)
+    print('...done')
+    print(f'Gathered names for {len(athletes_names)} athletes.')
 
     # Store athletes' names so that we do not pull the content from page each time
     # the program runs
-    # try:
-    #     with open(Path.cwd() / 'athletes_names.txt', 'w') as fobj:
-    #         for name in athletes_names:
-    #             fobj.write(name + "\n")
-    # except OSError as err:
-    #     stderr.write(f"An error occurred while writing athletes' names to file:\n{err}\n")
-
-    athletes_names = list()
     try:
-        with open(Path.cwd() / 'athletes_names.txt', 'r') as fobj:
-            for line in fobj.readlines():
-                athletes_names.append(line.rstrip('\n'))
+        with open(Path.cwd() / 'athletes_names.txt', 'w') as fobj:
+            for name in athletes_names:
+                fobj.write(name + "\n")
     except OSError as err:
-        stderr.write(f"An error occurred while reading athletes' names from file:\n{err}\n")
+        stderr.write(f"An error occurred while writing athletes' names to file:\n{err}\n")
+
+    # # Load athletes names from the textual file to avoid making multiple requests to the
+    # # page with athletes names
+    # athletes_names = list()
+    # try:
+    #     with open(Path.cwd() / 'athletes_names.txt', 'r') as fobj:
+    #         for line in fobj.readlines():
+    #             athletes_names.append(line.rstrip('\n'))
+    # except OSError as err:
+    #     stderr.write(f"An error occurred while reading athletes' names from file:\n{err}\n")
 
 
-    print("\nCollecting data about the athletes' country origins...")
+    print("\nCollecting data about the athletes' country origin...")
     athletes_dict = dict()
     not_found = list()
     for name in athletes_names:
@@ -187,12 +189,12 @@ def collect_athletes_data(athletes_url):
 
     for athlete, origin in athletes_dict.items():
         print(f"{athlete}: {origin}")
-    #
-    # with open(Path.cwd() / "athletes.json", "w") as jsonf:
-    #     json.dump(athletes_dict, jsonf, indent=4)
-    #
-    # print(f"\nInformation about country of origin was not found for the following {len(not_found)} athletes:")
-    # print(", ".join(not_found))
+
+    with open(Path.cwd() / "athletes.json", "w") as jsonf:
+        json.dump(athletes_dict, jsonf, indent=4)
+
+    print(f"\nInformation about country of origin was not found for the following {len(not_found)} athletes:")
+    print(", ".join(not_found))
 
 
 def create_country_labels_mapping():
@@ -220,7 +222,24 @@ def most_represented_countries():
         are represented in the collected athletes data.
     '''
 
-    
+    with open(Path.cwd() / 'athletes.json', 'r') as jsonf:
+        athletes_dict = json.load(jsonf)
+
+    countries_names_dict = create_country_labels_mapping()
+    for athlete, origin in athletes_dict.items():
+        for country, labels in countries_names_dict.items():
+            if origin in labels:
+                athletes_dict[athlete] = country
+                break
+
+    from collections import defaultdict
+    countries_count = defaultdict(int)
+    for athlete, country in athletes_dict.items():
+        countries_count[country] += 1
+
+    print("\nNumber of top athletes per country:")
+    for country, count in sorted(sorted(countries_count.items()), key=lambda item: item[1], reverse=True):
+        print(f"{country}: {count}")
 
 
 
@@ -228,4 +247,4 @@ if __name__ == '__main__':
 
     top_athletes_url = 'https://ivansmith.co.uk/?page_id=475'
     collect_athletes_data(top_athletes_url)
-    # most_represented_countries()
+    most_represented_countries()
